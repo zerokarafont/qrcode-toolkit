@@ -71,7 +71,7 @@ onMounted(() => {
       <div i-ri-qr-code-line />
       Generator
     </button>
-    <button
+    <!-- <button
       flex="~ gap-1.5 items-center" text-button
       :class="view === 'compare' ? 'bg-secondary' : 'op50'"
       @click="view = 'compare'"
@@ -105,7 +105,7 @@ onMounted(() => {
       @click="view = 'credit'"
     >
       Credits
-    </button>
+    </button> -->
   </div>
 
   <div v-show="view === 'generator'" w-full>

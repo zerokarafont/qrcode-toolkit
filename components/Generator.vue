@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { debounce } from 'perfect-debounce'
+import axios from 'axios'
 import { sendParentEvent } from '~/logic/messaging'
 import { generateQRCode } from '~/logic/generate'
-import { dataUrlGeneratedQRCode, defaultGeneratorState, generateQRCodeInfo, hasParentWindow, isLargeScreen, qrcode } from '~/logic/state'
+import { dataUrlGeneratedQRCode, defaultGeneratorState, generateQRCodeInfo, isLargeScreen, qrcode } from '~/logic/state'
 import { view } from '~/logic/view'
 import type { State } from '~/logic/types'
 import { MarkerSubShapeIcons, MarkerSubShapes, PixelStyleIcons, PixelStyles } from '~/logic/types'
@@ -12,6 +13,9 @@ const props = defineProps<{
   state: State
 }>()
 
+const tip = ref<string>('')
+const isError = ref<boolean>(false)
+const isWaiting = ref<boolean>(false)
 const rightPanelEl = ref<HTMLElement>()
 const uploadTarget = ref<'image' | 'qrcode'>()
 const state = computed(() => props.state.qrcode)
@@ -27,13 +31,52 @@ async function run() {
   dataUrlGeneratedQRCode.value = canvas.value.toDataURL()
 }
 
-function download() {
-  if (!canvas.value)
+async function copy() {
+  if (!canvas.value || isWaiting.value)
     return
-  const a = document.createElement('a')
-  a.href = dataUrlGeneratedQRCode.value!
-  a.download = `${state.value.text.replace(/\W/g, '_')}[${state.value.ecc}_x${state.value.scale}].png`
-  a.click()
+
+  isError.value = false
+  isWaiting.value = true
+
+  const base64Data = dataUrlGeneratedQRCode.value!
+  const byteCharacters = atob(base64Data.split(',')[1])
+  const byteNumbers = Array.from({ length: byteCharacters.length })
+  for (let i = 0; i < byteCharacters.length; i++)
+    byteNumbers[i] = byteCharacters.charCodeAt(i)
+
+  const byteArray = new Uint8Array(byteNumbers as number[])
+  const blob = new Blob([byteArray], { type: 'image/png' })
+
+  const formData = new FormData()
+  formData.append('file', blob, `${state.value.text.replace(/\W/g, '_')}[${state.value.ecc}_x${state.value.scale}].png`)
+
+  try {
+    const response = await axios.post('http://192.168.0.102:9000/api/file/cloudflare/uploadFile', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'admin': 'true',
+      },
+    })
+
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
+    window.AndroidInterface?.copyTextToClipboard?.(response?.data?.data?.path)
+    isError.value = false
+    tip.value = 'Copied'
+    setTimeout(() => {
+      tip.value = ''
+    }, 3000)
+  }
+  catch (e: unknown) {
+    isError.value = true
+  } finally {
+    isWaiting.value = false
+  }
+
+  // const a = document.createElement('a')
+  // a.href = dataUrlGeneratedQRCode.value!
+  // a.download = `${state.value.text.replace(/\W/g, '_')}[${state.value.ecc}_x${state.value.scale}].png`
+  // a.click()
 }
 
 function reset() {
@@ -323,7 +366,7 @@ watch(
             <div i-ri-refresh-line />
           </button>
         </OptionItem>
-        <OptionItem title="Background" div>
+        <!-- <OptionItem title="Background" div>
           <OptionColor v-if="state.backgroundImage?.startsWith('#')" v-model="state.backgroundImage" />
           <button v-else relative text-xs text-button>
             <img
@@ -343,7 +386,7 @@ watch(
           <button v-if="!state.backgroundImage" icon-button-sm title="Switch to Color">
             <div i-ri-paint-fill @click="state.backgroundImage = '#888888'" />
           </button>
-        </OptionItem>
+        </OptionItem> -->
 
         <div border="t base" my1 />
 
@@ -407,7 +450,7 @@ watch(
           </OptionItem>
         </template>
 
-        <div border="t base" my1 />
+        <!-- <div border="t base" my1 />
 
         <OptionItem title="Transform" />
         <OptionItem title="Perspective X" nested @reset="state.transformPerspectiveX = 0">
@@ -418,9 +461,9 @@ watch(
         </OptionItem>
         <OptionItem title="Scale" nested @reset="state.transformScale = 1">
           <OptionSlider v-model="state.transformScale" :min="0.5" :max="2" :step="0.01" :default="1" />
-        </OptionItem>
+        </OptionItem> -->
       </div>
-      <div flex="~ gap-2">
+      <!-- <div flex="~ gap-2">
         <button
           text-sm op75 text-button hover:op100
           @click="downloadState()"
@@ -449,7 +492,7 @@ watch(
           <div i-ri-delete-bin-6-line />
           Reset State
         </button>
-      </div>
+      </div> -->
     </div>
     <div ref="rightPanelEl">
       <div
@@ -501,12 +544,20 @@ watch(
         </div>
         <button
           py2 text-sm text-button
-          @click="download()"
+          :disabled="!state.text"
+          @click="copy()"
         >
-          <div i-ri-download-line />
-          Download
+          {{ isWaiting.valueOf() ? "Waiting..." : !state.text ? "Please input text to encode" : "Copy" }}
         </button>
-        <button
+        <div v-if="isError.valueOf()" :style="{ color: 'red', margin: 'auto' }">
+          Something Error
+        </div>
+        <div v-if="tip.valueOf()" :style="{ margin: 'auto', display: 'inline-flex', alignItems: 'center' }">
+          {{ tip.valueOf() }}
+          &nbsp;
+          <svg viewBox="64 64 896 896" focusable="false" data-icon="check-circle" width="1em" height="1em" fill="rgb(82, 196, 26)" aria-hidden="true"><path d="M512 64C264.6 64 64 264.6 64 512s200.6 448 448 448 448-200.6 448-448S759.4 64 512 64zm193.5 301.7l-210.6 292a31.8 31.8 0 01-51.7 0L318.5 484.9c-3.8-5.3 0-12.7 6.5-12.7h46.9c10.2 0 19.9 4.9 25.9 13.3l71.2 98.8 157.2-218c6-8.3 15.6-13.3 25.9-13.3H699c6.5 0 10.3 7.4 6.5 12.7z"/></svg>
+        </div>
+        <!-- <button
           py2 text-sm text-button
           @click="sendCompare()"
         >
@@ -520,7 +571,7 @@ watch(
         >
           <div i-ri-file-upload-line />
           Send to ControlNet
-        </button>
+        </button> -->
         <div v-if="mayNotScannable" border="~ amber-6/60 rounded" bg-amber-5:10 px3 py2 text-sm text-amber-6>
           This QR Code may or may not be scannable. Please verify before using.
         </div>

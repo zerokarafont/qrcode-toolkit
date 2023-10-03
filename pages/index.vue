@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { hasParentWindow, storeIndex, toggleDark } from '~/logic/state'
+import { storeIndex, toggleDark } from '~/logic/state'
 
-const config = useRuntimeConfig()
-const buildTime = useTimeAgo(config.public.buildTime as any)
+// const config = useRuntimeConfig()
+// const buildTime = useTimeAgo(config.public.buildTime as any)
 </script>
 
 <template>
@@ -32,7 +32,7 @@ const buildTime = useTimeAgo(config.public.buildTime as any)
 
       <div flex-auto />
 
-      <div mt-15 flex="~ col gap-2">
+      <!-- <div mt-15 flex="~ col gap-2">
         <div>
           <span op50>Anthony Fu's </span> <span font-600 op75>QR</span><span font-400 op65> Toolkit</span>
         </div>
@@ -59,9 +59,9 @@ const buildTime = useTimeAgo(config.public.buildTime as any)
       <div>
         <span op50>If you find this app useful, </span>
         <a href="https://github.com/sponsors/antfu" target="_blank" op75 hover:text-rose hover:underline hover:op100>Sponsor to support my work</a>
-      </div>
+      </div> -->
 
-      <div my2 h-1px border="t base" w-10 />
+      <!-- <div my2 h-1px border="t base" w-10 />
 
       <div flex="~ gap-2 items-center">
         <span op65>
@@ -70,7 +70,7 @@ const buildTime = useTimeAgo(config.public.buildTime as any)
         </span>
         <span op35>·</span>
         <span text-sm op50 :title="new Date(config.public.buildTime).toString()">Built {{ buildTime }}</span>
-      </div>
+      </div> -->
 
       <div my4 h-1px border="t base" w-10 />
 
